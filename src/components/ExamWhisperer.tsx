@@ -9,6 +9,7 @@ import { PromptInput } from './PromptInput';
 import { TypingIndicator } from './TypingIndicator';
 import { UnitButton } from './UnitButton';
 import { InsightsDrawer } from './InsightsDrawer';
+import { Landing } from './Landing';
 import { cn } from '@/lib/utils';
 
 interface UploadedFile {
@@ -27,6 +28,7 @@ interface Message {
 }
 
 export const ExamWhisperer: React.FC = () => {
+  const [showLanding, setShowLanding] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [insightsOpen, setInsightsOpen] = useState(true);
@@ -123,12 +125,20 @@ export const ExamWhisperer: React.FC = () => {
     setUploadedFiles(prev => prev.filter(f => f.id !== fileId));
   };
 
+  const handleGetStarted = () => {
+    setShowLanding(false);
+  };
+
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDarkMode);
   }, [isDarkMode]);
 
+  if (showLanding) {
+    return <Landing onGetStarted={handleGetStarted} />;
+  }
+
   return (
-    <div className="flex h-screen w-full bg-background text-foreground overflow-hidden">
+    <div className="flex h-screen w-full bg-background text-foreground overflow-hidden animate-slide-in-right">
       {/* Left Sidebar */}
       <div className={cn(
         "flex flex-col bg-background border-r border-border transition-all duration-300 slide-in-left",
