@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Brain, Menu, Sun, Moon, Sparkles, FileText } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Bot, Upload, MessageSquare, Sun, Moon, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { DropZone } from './DropZone';
 import { FileCard } from './FileCard';
 import { MessageBubble } from './MessageBubble';
@@ -31,10 +31,11 @@ export const ExamWhisperer: React.FC = () => {
   const [showLanding, setShowLanding] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [insightsOpen, setInsightsOpen] = useState(true);
+  const [insightsOpen, setInsightsOpen] = useState(false);
   const [selectedUnit, setSelectedUnit] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<UploadedFile | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([
     { id: '1', name: 'DBMS_PreviousPapers_2023.pdf', status: 'completed', size: '2.4 MB' },
@@ -133,157 +134,141 @@ export const ExamWhisperer: React.FC = () => {
     document.documentElement.classList.toggle('dark', isDarkMode);
   }, [isDarkMode]);
 
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isTyping]);
+
   if (showLanding) {
     return <Landing onGetStarted={handleGetStarted} />;
   }
 
   return (
-    <div className="flex h-screen w-full bg-background text-foreground overflow-hidden animate-slide-in-right">
-      {/* Left Sidebar */}
-      <div className={cn(
-        "flex flex-col bg-background border-r border-border transition-all duration-300 slide-in-left",
-        sidebarOpen ? "w-80" : "w-16"
-      )}>
-        {/* Header */}
-        <div className="p-6 border-b border-border">
-          <div className="flex items-center justify-between">
-            {sidebarOpen && (
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-primary/20 ai-glow">
-                  <Brain className="w-6 h-6 text-primary" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                    Exam Whisperer
-                  </h1>
-                  <p className="text-xs text-muted-foreground">AI Study Assistant</p>
-                </div>
-              </div>
-            )}
+    <div className={cn(
+      "h-screen flex flex-col transition-colors duration-300 font-inter",
+      isDarkMode ? "dark bg-background" : "bg-background"
+    )}>
+      {/* Header */}
+      <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-sm">
+        <div className="flex h-16 items-center justify-between px-6">
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl font-semibold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+              📚 Exam Whisperer
+            </h1>
+            <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+          </div>
+
+          <div className="flex items-center gap-2">
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setSidebarOpen(!sidebarOpen)}
+              onClick={() => setIsDarkMode(!isDarkMode)}
               className="hover-glow"
             >
-              <Menu className="w-4 h-4" />
+              {isDarkMode ? (
+                <Sun className="w-4 h-4" />
+              ) : (
+                <Moon className="w-4 h-4" />
+              )}
+            </Button>
+            
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setInsightsOpen(!insightsOpen)}
+              className="hover-glow"
+            >
+              <BarChart3 className="w-4 h-4" />
             </Button>
           </div>
         </div>
+      </header>
 
-        {sidebarOpen && (
-          <div className="flex-1 p-6 space-y-6 overflow-y-auto">
-            {/* File Upload */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4 text-primary" />
-                <h2 className="font-semibold">Upload Files</h2>
-              </div>
-              <DropZone onFileUpload={handleFileUpload} />
+      {/* Chat Area */}
+      <div className="flex-1 overflow-hidden">
+        <div className="h-full max-w-4xl mx-auto flex flex-col">
+          <ScrollArea className="flex-1 px-6">
+            <div className="py-6 space-y-6">
+              {messages.map((message) => (
+                <MessageBubble
+                  key={message.id}
+                  message={message.text}
+                  isUser={message.isUser}
+                  timestamp={message.timestamp}
+                  sources={message.sources}
+                />
+              ))}
+              
+              {isTyping && <TypingIndicator />}
+              
+              {/* Auto-scroll target */}
+              <div ref={messagesEndRef} />
+              
+              {messages.length === 1 && messages[0]?.text.includes("AI study assistant") && (
+                <div className="text-center py-20">
+                  <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-primary/10 flex items-center justify-center ai-glow">
+                    <Bot className="w-10 h-10 text-primary" />
+                  </div>
+                  <h3 className="text-2xl font-semibold mb-3 fade-in">
+                    Welcome to Exam Whisperer
+                  </h3>
+                  <p className="text-muted-foreground max-w-md mx-auto text-lg fade-in">
+                    Your AI-powered study companion. Upload exam papers, ask questions, and get intelligent insights to ace your exams.
+                  </p>
+                  
+                  <div className="mt-8 flex flex-wrap gap-2 justify-center">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => (document.querySelector('input[type="file"]') as HTMLInputElement)?.click()}
+                      className="hover-glow"
+                    >
+                      <Upload className="w-4 h-4 mr-2" />
+                      Upload Papers
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleSendMessage("What are the most frequently asked questions?")}
+                      className="hover-glow"
+                    >
+                      <MessageSquare className="w-4 h-4 mr-2" />
+                      Ask Sample Question
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
+          </ScrollArea>
 
-            {/* Uploaded Files */}
-            {uploadedFiles.length > 0 && (
-              <div className="space-y-3">
-                <h3 className="text-sm font-medium text-muted-foreground">Uploaded Files</h3>
-                {uploadedFiles.map((file) => (
-                  <FileCard
-                    key={file.id}
-                    fileName={file.name}
-                    status={file.status}
-                    fileSize={file.size}
-                    onRemove={() => handleRemoveFile(file.id)}
-                  />
-                ))}
-              </div>
-            )}
-
-            <Separator />
-
-            {/* Units */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-accent" />
-                <h3 className="font-semibold">Units</h3>
-              </div>
-              <div className="grid grid-cols-1 gap-2">
-                {units.map((unit) => (
-                  <UnitButton
-                    key={unit.name}
-                    unit={unit.name}
-                    questionCount={unit.questionCount}
-                    isActive={selectedUnit === unit.name}
-                    onClick={() => setSelectedUnit(selectedUnit === unit.name ? null : unit.name)}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col">
-        {/* Chat Header */}
-        <div className="p-4 border-b border-border bg-background/80 backdrop-blur-sm">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div>
-                <h2 className="font-semibold">
-                  {selectedFile || 'General Discussion'}
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  {selectedUnit ? `Focused on ${selectedUnit}` : 'Ask me anything about your exams'}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsDarkMode(!isDarkMode)}
-                className="hover-glow"
-              >
-                {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setInsightsOpen(!insightsOpen)}
-                className="hover-glow"
-              >
-                <Brain className="w-4 h-4 mr-2" />
-                Insights
-              </Button>
+          {/* Input Area */}
+          <div className="border-t border-border bg-background/80 backdrop-blur-sm p-6">
+            <div className="max-w-3xl mx-auto">
+              <PromptInput
+                onSendMessage={handleSendMessage}
+                disabled={isTyping}
+                placeholder="Ask anything about your exam papers..."
+                className="w-full"
+              />
+              
+              {/* File Upload (Hidden) */}
+              <input
+                type="file"
+                accept=".pdf,.doc,.docx,.txt"
+                multiple
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || []);
+                  handleFileUpload(files);
+                }}
+                className="hidden"
+              />
             </div>
           </div>
         </div>
-
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
-          {messages.map((message) => (
-            <MessageBubble
-              key={message.id}
-              message={message.text}
-              isUser={message.isUser}
-              timestamp={message.timestamp}
-              sources={message.sources}
-            />
-          ))}
-          {isTyping && <TypingIndicator />}
-        </div>
-
-        {/* Input */}
-        <div className="p-6 border-t border-border bg-background/80 backdrop-blur-sm">
-          <PromptInput
-            onSendMessage={handleSendMessage}
-            disabled={isTyping}
-            placeholder={selectedUnit ? `Ask about ${selectedUnit}...` : "Ask about this exam..."}
-          />
-        </div>
       </div>
 
-      {/* Right Insights Drawer */}
-      {insightsOpen && <InsightsDrawer />}
+      {/* Insights Drawer */}
+      {insightsOpen && <InsightsDrawer isOpen={insightsOpen} />}
     </div>
   );
 };
